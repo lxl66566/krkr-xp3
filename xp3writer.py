@@ -110,7 +110,7 @@ class XP3Writer:
             encryption = path_hash = None
 
         uncompressed_size = len(uncompressed_data)
-        compressed_data = uncompressed_data #zlib.compress(uncompressed_data, level=9)
+        compressed_data = zlib.compress(uncompressed_data, level=9)
         compressed_size = len(compressed_data)
 
         if compressed_size >= uncompressed_size:
@@ -125,7 +125,7 @@ class XP3Writer:
         info = XP3FileInfo(is_encrypted=is_encrypted,
                            uncompressed_size=uncompressed_size,
                            compressed_size=compressed_size,
-                           file_path=internal_filepath # if not is_encrypted else path_hash  ## modified for me, fuck
+                           file_path=internal_filepath if not is_encrypted else path_hash
                            )
 
         segment = XP3FileSegments.segment(
