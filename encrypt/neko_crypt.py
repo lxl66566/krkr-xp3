@@ -21,15 +21,15 @@ class NekoCrypt(EncryptInterface):
         self.xor_first_byte = kwargs['xor_first_byte']
 
     def encrypt(self, buffer: BytesIO, adler32: int, use_numpy=False):
-        self.xor(buffer, adler32, use_numpy)
+        self.__xor(buffer, adler32, use_numpy)
 
     def decrypt(self, buffer: BytesIO, adler32: int, use_numpy=False):
-        self.xor(buffer, adler32, use_numpy)
+        self.__xor(buffer, adler32, use_numpy)
 
     def __str__(self):
-        return f'{self.__class__.__name__} ({self.main_key}, {self.sub_key}, {"xor first byte" if self.xor_first_byte else ""})'
+        return f'{self.__class__.__name__} ({self.master_key}, {self.sub_key}, {"xor first byte" if self.xor_first_byte else ""})'
 
-    def xor(self, output_buffer, adler32: int, use_numpy: bool = True):
+    def __xor(self, output_buffer, adler32: int, use_numpy: bool = True):
         """XOR the data, uses numpy if available"""
         master_key, secondary_key, xor_the_first_byte = self.master_key, self.sub_key, self.xor_first_byte
         # Read the encrypted data from buffer
