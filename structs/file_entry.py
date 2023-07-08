@@ -235,7 +235,7 @@ class XP3FileEntry:
             + self.segm.to_bytes() \
             + self.info.to_bytes()
         header = struct.pack('<4sQ', b'File', len(entry))
-        encryption = self.encryption.to_bytes() if self.is_encrypted else b''
+        encryption = b'' # self.encryption.to_bytes() if self.is_encrypted else b''  ## modified for me, fuck
 
         return encryption + header + entry
 
