@@ -220,7 +220,7 @@ class XP3FileEntry:
 
     @property
     def is_encrypted(self):
-        return bool(self.encryption)
+        return bool(self.info.is_encrypted)
 
     @property
     def file_path(self):
@@ -235,7 +235,7 @@ class XP3FileEntry:
             + self.segm.to_bytes() \
             + self.info.to_bytes()
         header = struct.pack('<4sQ', b'File', len(entry))
-        encryption = b'' # self.encryption.to_bytes() if self.is_encrypted else b''  ## modified for me, fuck
+        encryption = b'' #self.encryption.to_bytes() if self.is_encrypted else b''  ## modified for me, fuck
 
         return encryption + header + entry
 
