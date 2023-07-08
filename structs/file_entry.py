@@ -7,7 +7,7 @@ from .constants import XP3FileIsEncrypted
 
 
 class XP3FileEncryption:
-    encryption_chunk = struct.Struct('<QIH')
+    encryption_chunk = struct.Struct('<QIH')  # little endian, int64, int32, int16
 
     def __init__(self, adler32: int, file_path: str, name: bytes = b'eliF'):
         """

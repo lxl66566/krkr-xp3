@@ -107,7 +107,7 @@ class XP3(XP3Reader, XP3Writer):
         if self._is_writemode:
             if not self.packed_up:
                 self.pack_up()
-            self.buffer.close()
+        self.buffer.close()
 
 
 if __name__ == '__main__':

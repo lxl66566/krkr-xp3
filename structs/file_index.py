@@ -95,13 +95,16 @@ class XP3FileIndex:
 
     def to_bytes(self):
         uncompressed_index = b''.join([entry.to_bytes() for entry in self.entries])
-        compressed_index = zlib.compress(uncompressed_index, level=9)
         uncompressed_size = len(uncompressed_index)
-        compressed_size = len(compressed_index)
-        if compressed_size + 1 + 8 + 8 < uncompressed_size + 1 + 8:  # Account for header overhead
-            return struct.pack('<BQQ', XP3FileIndexCompressed, compressed_size, uncompressed_size) + compressed_index
-        else:
-            return struct.pack('<BQ', Xp3FileIndexUncompressed, uncompressed_size) + uncompressed_index
+        return struct.pack('<BQ', Xp3FileIndexUncompressed, uncompressed_size) + uncompressed_index
+        # stop compressing index here
+        # compressed_index = zlib.compress(uncompressed_index, level=9)
+        # uncompressed_size = len(uncompressed_index)
+        # compressed_size = len(compressed_index)
+        # if compressed_size + 1 + 8 + 8 < uncompressed_size + 1 + 8:  # Account for header overhead
+        #     return struct.pack('<BQQ', XP3FileIndexCompressed, compressed_size, uncompressed_size) + compressed_index
+        # else:
+        #     return struct.pack('<BQ', Xp3FileIndexUncompressed, uncompressed_size) + uncompressed_index
 
     def __iter__(self):
         yield from self.entries

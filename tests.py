@@ -3,7 +3,7 @@ import unittest
 import datetime
 import tempfile
 from xp3 import XP3, XP3Reader, XP3Writer
-
+from structs.encryption_parameters import encryption_parameters
 
 class Encryption(unittest.TestCase):
     """Encryption test with Numpy and pure Python XORing"""
@@ -14,9 +14,9 @@ class Encryption(unittest.TestCase):
             archive = xp3.pack_up()
 
         with XP3Reader(archive, silent=True, use_numpy=use_numpy) as xp3:
-            self.assertTrue(xp3.is_encrypted)
+            self.assertEqual(xp3.is_encrypted, encryption_type != 'none')
             file = xp3.open('dummy_file')
-            self.assertTrue(file.is_encrypted)
+            self.assertEqual(file.is_encrypted, encryption_type != 'none')
             self.assertEqual('dummy_file', file.file_path)
             self.assertEqual(data, file.read(encryption_type=encryption_type))
 
@@ -24,10 +24,14 @@ class Encryption(unittest.TestCase):
         # Crash test early if Numpy is not present
         import numpy
         del numpy
-        self.encrypt_and_decrypt(data, 'neko_vol0', True)
+        for game_name in encryption_parameters:
+            print(f'Testing {game_name} with numpy')
+            self.encrypt_and_decrypt(data, game_name, True)
 
     def with_python(self, data):
-        self.encrypt_and_decrypt(data, 'neko_vol0', False)
+        for game_name in encryption_parameters:
+            print(f'Testing {game_name} without numpy')
+            self.encrypt_and_decrypt(data, game_name, False)
 
     def test_numpy_uncompressed(self):
         self.with_numpy(b'dummy_data')

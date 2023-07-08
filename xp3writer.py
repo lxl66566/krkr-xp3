@@ -4,6 +4,7 @@ import hashlib
 from io import BytesIO
 from structs import XP3FileIndex, XP3FileEncryption, XP3FileTime, XP3FileAdler, XP3FileSegments, XP3FileInfo, XP3File, \
     XP3FileEntry, XP3Signature, encryption_parameters
+from encrypt.encrypt_interface import EncryptInterface
 
 
 class XP3Writer:
@@ -101,8 +102,8 @@ class XP3Writer:
 
         is_encrypted = False if encryption_type in ('none', None) else True
         if is_encrypted:
-            uncompressed_data = self.xor(uncompressed_data, adlr.value, encryption_type, self.use_numpy)
-            _, _, _, name = encryption_parameters[encryption_type]
+            uncompressed_data = self.encrypt(uncompressed_data, adlr.value, encryption_type, self.use_numpy)
+            _, _, name = encryption_parameters[encryption_type]
             encryption = XP3FileEncryption(adlr.value, internal_filepath, name)
             path_hash = hashlib.md5(internal_filepath.lower().encode('utf-16le')).hexdigest()
         else:
@@ -140,8 +141,10 @@ class XP3Writer:
         return file_entry, data
 
     @staticmethod
-    def xor(data, adler32, encryption_type, use_numpy):
+    def encrypt(data, adler32, encryption_type, use_numpy):
         with BytesIO() as buffer:
             buffer.write(data)
-            XP3File.xor(buffer, adler32, encryption_type, use_numpy)
+            crypt_class, params, _ = encryption_parameters[encryption_type]
+            mCrypt: EncryptInterface = crypt_class(**params)
+            mCrypt.encrypt(buffer, adler32, use_numpy)
             return buffer.getvalue()
