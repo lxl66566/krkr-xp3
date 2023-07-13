@@ -6,40 +6,41 @@ from datetime import datetime
 from .constants import XP3FileIsEncrypted
 
 
-class XP3FileEncryption:
+class XP3IndexSpecialFormat:
     encryption_chunk = struct.Struct('<QIH')  # little endian, int64, int32, int16
+    special_field: bytes
+    adler32: int
+    file_path: str
 
-    def __init__(self, adler32: int, file_path: str, name: bytes = b'eliF'):
+    def __init__(self, adler32: int, file_path: str, special_field: bytes = b'eliF'):
         """
         :param adler32: Adler-32 checksum of a file
         :param file_path: Internal file path
-        :param name: Chunk header
+        :param special_field: Chunk header
         """
-        self.name = name
+        self.special_field = special_field
         self.adler32 = adler32
         self.file_path = file_path
 
     @classmethod
-    def read_from(cls, buffer: BufferedReader, name: bytes = b'eliF'):
+    def read_from(cls, buffer: BufferedReader, special_field: bytes = b'eliF'):
         start = buffer.tell() + 8
         size, adler32, file_path_length = cls.encryption_chunk.unpack(buffer.read(14))
-        file_path, = struct.unpack('<' + (str(file_path_length * 2) + 's') + 'xx',
-                                   buffer.read(2 + file_path_length * 2))
+        file_path, = struct.unpack('<' + (str(file_path_length * 2) + 's') + 'xx', buffer.read(2 + file_path_length * 2))
         file_path = file_path.decode('utf-16le')
 
         if buffer.tell() != start + size:  # chunk size doesn't include the size itself
-            raise AssertionError('Buffer position {}, expected {}'.format(buffer.tell(),
-                                                                          start + size))
-        return cls(adler32, file_path, name)
+            raise AssertionError('Buffer position {}, expected {}'.format(buffer.tell(), start + size))
+        return cls(adler32, file_path, special_field)
 
     def to_bytes(self):
         size = 4 + 2 + (len(self.file_path) * 2) + 2
         data = struct.pack('<QIH', size, self.adler32, len(self.file_path))
         file_path = self.file_path.encode('utf-16le') + b'\x00\x00'
-        return self.name + data + file_path
+        return self.special_field + data + file_path
 
     def __repr__(self):
-        return "<XP3FileEncryption adler32={}, file_path='{}'>".format(self.adler32, self.file_path)
+        return "<XP3IndexSpecialFormat adler32={}, file_path='{}'>".format(self.adler32, self.file_path)
 
 
 class XP3FileTime:
@@ -167,9 +168,14 @@ class XP3FileAdler:
 
 class XP3FileEntry:
     file_chunk = struct.Struct('<Q')
+    encryption: XP3IndexSpecialFormat
+    time: XP3FileTime
+    adlr: XP3FileAdler
+    segm: XP3FileSegments
+    info: XP3FileInfo
 
     def __init__(self, time: XP3FileTime, adlr: XP3FileAdler, segm: XP3FileSegments, info: XP3FileInfo,
-                 encryption: XP3FileEncryption = None):
+                 encryption: XP3IndexSpecialFormat = None):
         self.encryption = encryption
         self.time = time
         self.adlr = adlr
@@ -190,7 +196,7 @@ class XP3FileEntry:
 
         name = buffer.read(4)
         if name != b'File':  # first chunk should be 'File', if not most likely an encryption chunk
-            encryption = XP3FileEncryption.read_from(buffer, name)
+            encryption = XP3IndexSpecialFormat.read_from(buffer, name)
             if buffer.read(4) != b'File':
                 raise AssertionError
         start = buffer.tell()

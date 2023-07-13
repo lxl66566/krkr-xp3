@@ -16,9 +16,12 @@ class XP3DecryptionError(Exception):
 
 class XP3File(XP3FileEntry):
     """Wrapper around file entry with buffer access to be able to read the file"""
+    buffer: BytesIO
+    silent: bool
+    use_numpy: bool
 
     def __init__(self, index_entry: XP3FileEntry, buffer, silent, use_numpy):
-        super(XP3File, self).__init__(
+        super().__init__(
             encryption=index_entry.encryption,
             time=index_entry.time,
             adlr=index_entry.adlr,
@@ -30,7 +33,7 @@ class XP3File(XP3FileEntry):
         self.use_numpy = use_numpy
 
     def read(self, encryption_type='none', raw=False):
-        """Reads the file from buffer and return it's data"""
+        """Reads the file from buffer and return its data"""
         for segment in self.segm:
             self.buffer.seek(segment.offset)
             data = self.buffer.read(segment.compressed_size)

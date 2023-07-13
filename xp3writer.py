@@ -2,7 +2,7 @@ import zlib
 import struct
 import hashlib
 from io import BytesIO
-from structs import XP3FileIndex, XP3FileEncryption, XP3FileTime, XP3FileAdler, XP3FileSegments, XP3FileInfo, XP3File, \
+from structs import XP3FileIndex, XP3IndexSpecialFormat, XP3FileTime, XP3FileAdler, XP3FileSegments, XP3FileInfo, XP3File, \
     XP3FileEntry, XP3Signature, encryption_parameters
 from encrypt.encrypt_interface import EncryptInterface
 
@@ -104,7 +104,7 @@ class XP3Writer:
         if is_encrypted:
             uncompressed_data = self.encrypt(uncompressed_data, adlr.value, encryption_type, self.use_numpy)
             _, _, name = encryption_parameters[encryption_type]
-            encryption = XP3FileEncryption(adlr.value, internal_filepath, name)
+            encryption = XP3IndexSpecialFormat(adlr.value, internal_filepath, name)
             path_hash = hashlib.md5(internal_filepath.lower().encode('utf-16le')).hexdigest()
         else:
             encryption = path_hash = None
