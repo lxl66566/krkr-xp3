@@ -1,9 +1,15 @@
 from io import BytesIO
 from structs import XP3Signature, XP3FileIndex, XP3File
-
+from encrypt.encrypt_interface import EncryptInterface
 
 class XP3Reader:
-    def __init__(self, buffer: BytesIO, silent: bool = False, use_numpy: bool = True):
+    def __init__(self, 
+                 buffer: BytesIO, 
+                 silent: bool = False, 
+                 use_numpy: bool = True,
+                 game_name: str = 'none',
+                 encrypt_instance: EncryptInterface = None
+                 ):
         if isinstance(buffer, bytes):
             buffer = BytesIO(buffer)
 

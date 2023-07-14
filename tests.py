@@ -3,35 +3,40 @@ import unittest
 import datetime
 import tempfile
 from xp3 import XP3, XP3Reader, XP3Writer
-from structs.encryption_parameters import encryption_parameters
+from structs.game_list import game_list
+from encrypt.encrypt_interface import EncryptInterface
 
 class Encryption(unittest.TestCase):
     """Encryption test with Numpy and pure Python XORing"""
 
-    def encrypt_and_decrypt(self, data, encryption_type, use_numpy):
-        with XP3Writer(silent=True, use_numpy=use_numpy) as xp3:
-            xp3.add('dummy_file', data, encryption_type)
+    def encrypt_and_decrypt(self, data, game_name, use_numpy, encrypt_instance: EncryptInterface):
+        with XP3Writer(silent=True, use_numpy=use_numpy, game_name=game_name, encrypt_instance=encrypt_instance) as xp3:
+            xp3.add('dummy_file', data)
             archive = xp3.pack_up()
 
         with XP3Reader(archive, silent=True, use_numpy=use_numpy) as xp3:
-            self.assertEqual(xp3.is_encrypted, encryption_type != 'none')
+            self.assertEqual(xp3.is_encrypted, game_name != 'none')
             file = xp3.open('dummy_file')
-            self.assertEqual(file.is_encrypted, encryption_type != 'none')
+            self.assertEqual(file.is_encrypted, game_name != 'none')
             self.assertEqual('dummy_file', file.file_path)
-            self.assertEqual(data, file.read(encryption_type=encryption_type))
+            self.assertEqual(data, file.read(encryption_type=game_name, encrypt_instance=encrypt_instance))
 
     def with_numpy(self, data):
         # Crash test early if Numpy is not present
         import numpy
         del numpy
-        for game_name in encryption_parameters:
+        for game_name in game_list:
+            crypt_class, params, _,  = game_list[game_name]
+            encrypt_instance = crypt_class(**params)
             print(f'Testing {game_name} with numpy')
-            self.encrypt_and_decrypt(data, game_name, True)
+            self.encrypt_and_decrypt(data, game_name, True, encrypt_instance)
 
     def with_python(self, data):
-        for game_name in encryption_parameters:
+        for game_name in game_list:
+            crypt_class, params, _,  = game_list[game_name]
+            encrypt_instance = crypt_class(**params)
             print(f'Testing {game_name} without numpy')
-            self.encrypt_and_decrypt(data, game_name, False)
+            self.encrypt_and_decrypt(data, game_name, False, encrypt_instance)
 
     def test_numpy_uncompressed(self):
         self.with_numpy(b'dummy_data')
@@ -94,7 +99,7 @@ class MemoryReadAndWrite(unittest.TestCase):
     def test(self):
         with XP3Writer(silent=True) as xp3:
             for filepath, data, timestamp, compressed in self.dummy_data:
-                xp3.add(filepath, data, None, timestamp=timestamp)
+                xp3.add(filepath, data, timestamp=timestamp)
             archive = xp3.pack_up()
 
         with XP3Reader(archive, silent=True) as xp3:
@@ -112,9 +117,9 @@ class DuplicateWrite(unittest.TestCase):
 
     def test(self):
         with XP3Writer(silent=True) as xp3:
-            xp3.add('duplicate_file', b'12345', None)
+            xp3.add('duplicate_file', b'12345')
             with self.assertRaises(FileExistsError):
-                xp3.add('duplicate_file', b'12345', None)
+                xp3.add('duplicate_file', b'12345')
 
 
 if __name__ == '__main__':

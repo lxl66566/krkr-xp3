@@ -7,7 +7,7 @@ from .constants import XP3FileIsEncrypted
 
 
 class XP3IndexSpecialFormat:
-    encryption_chunk = struct.Struct('<QIH')  # little endian, int64, int32, int16
+    special_chunk_format = struct.Struct('<QIH')  # little endian, int64, int32, int16
     special_field: bytes
     adler32: int
     file_path: str
@@ -25,7 +25,7 @@ class XP3IndexSpecialFormat:
     @classmethod
     def read_from(cls, buffer: BufferedReader, special_field: bytes = b'eliF'):
         start = buffer.tell() + 8
-        size, adler32, file_path_length = cls.encryption_chunk.unpack(buffer.read(14))
+        size, adler32, file_path_length = cls.special_chunk_format.unpack(buffer.read(14))
         file_path, = struct.unpack('<' + (str(file_path_length * 2) + 's') + 'xx', buffer.read(2 + file_path_length * 2))
         file_path = file_path.decode('utf-16le')
 

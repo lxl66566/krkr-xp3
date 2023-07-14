@@ -13,10 +13,15 @@
 # Python 3 rewrite, Awakening
 
 
-import os
+import os, argparse
 from xp3reader import XP3Reader
 from xp3writer import XP3Writer
 
+from encrypt.encrypt_interface import EncryptInterface
+from structs.game_list import game_list
+
+encrypt_instance: EncryptInterface = None
+game_name: str = 'none'
 
 class XP3(XP3Reader, XP3Writer):
     def __init__(self, target, mode='r', silent=False):
@@ -27,14 +32,14 @@ class XP3(XP3Reader, XP3Writer):
                 if not os.path.isfile(target):
                     raise FileNotFoundError
                 target = open(target, 'rb')
-            XP3Reader.__init__(self, target, silent)
+            XP3Reader.__init__(self, target, silent, True, game_name, encrypt_instance)
         elif self._is_writemode:
             if isinstance(target, str):
                 dir = os.path.dirname(target)
                 if dir and not os.path.exists(dir):
                     os.makedirs(dir)
                 target = open(target, 'wb')
-            XP3Writer.__init__(self, target, silent)
+            XP3Writer.__init__(self, target, silent, True, game_name, encrypt_instance)
         else:
             raise ValueError('Invalid operation mode')
 
@@ -57,13 +62,13 @@ class XP3(XP3Reader, XP3Writer):
                     print('| Extracting {} ({} -> {} bytes)'.format(file.file_path,
                                                                     file.info.compressed_size,
                                                                     file.info.uncompressed_size))
-                file.extract(to=to, encryption_type=encryption_type)
+                file.extract(to=to, encryption_type=encryption_type, encrypt_instance=encrypt_instance)
             except OSError:  # Usually because of long file names
                 if not self.silent:
                     print('! Problem writing {}'.format(file.file_path))
         return self
 
-    def add_folder(self, path, flatten: bool = False, encryption_type: str = None, save_timestamps: bool = False):
+    def add_folder(self, path, flatten: bool = False, save_timestamps: bool = False):
         if not self._is_writemode:
             raise Exception('Archive is not open in writing mode')
         if not self.silent:
@@ -79,9 +84,9 @@ class XP3(XP3Reader, XP3Writer):
                 internal_filepath = internal_root + '/' + filename \
                                     if internal_root and not flatten \
                                     else filename
-                self.add_file(os.path.join(dirpath, filename), internal_filepath, encryption_type, save_timestamps)
+                self.add_file(os.path.join(dirpath, filename), internal_filepath, save_timestamps)
 
-    def add_file(self, path, internal_filepath: str = None, encryption_type: str = None, save_timestamps: bool = False):
+    def add_file(self, path, internal_filepath: str = None, save_timestamps: bool = False):
         """
         :param path: Path to file
         :param internal_filepath: Internal archive path to save file under (if not specified, file name is used)
@@ -100,7 +105,7 @@ class XP3(XP3Reader, XP3Writer):
                 internal_filepath = os.path.basename(buffer.name)
 
         timestamp = 0 if not save_timestamps else round(os.path.getctime(path) * 1000)
-        super().add(internal_filepath, data, encryption_type, timestamp)
+        super().add(internal_filepath, data, timestamp)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Write the file index in the archive as we leave the context manager"""
@@ -111,12 +116,9 @@ class XP3(XP3Reader, XP3Writer):
 
 
 if __name__ == '__main__':
-    import argparse
-    from structs.encryption_parameters import encryption_parameters
-
     def input_filepath(path: str) -> str:
         if not os.path.exists(os.path.realpath(path)):
-            raise argparse.ArgumentError
+            raise argparse.ArgumentError(message=f'{path} does not exist')
         return path
 
 
@@ -126,11 +128,16 @@ if __name__ == '__main__':
     parser.add_argument('-flatten', '-f', action='store_true', default=False,
                         help='Ignore the subdirectories and pack the archive as if all files are in the root folder')
     parser.add_argument('--dump-index', '-i', action='store_true', help='Dump the file index of an archive')
-    parser.add_argument('-encryption', '-e', choices=encryption_parameters.keys(), default='none',
+    parser.add_argument('-encryption', '-e', choices=game_list.keys(), default='none',
                         help='Specify the encryption method')
+    parser.add_argument('--compression', '-c', action='store_true', default=False)
     parser.add_argument('input', type=input_filepath, help='File to unpack or folder to pack')
     parser.add_argument('output', help='Output folder to unpack into or output file to pack into')
     args = parser.parse_args()
+
+    crypt_class, params, _ = game_list[args.encryption]
+    encrypt_instance = crypt_class(**params)
+    game_name = args.encryption
 
     if args.mode in ('e', 'extract'):
         with XP3(args.input, 'r', args.silent) as xp3:

@@ -3,17 +3,27 @@ import struct
 import hashlib
 from io import BytesIO
 from structs import XP3FileIndex, XP3IndexSpecialFormat, XP3FileTime, XP3FileAdler, XP3FileSegments, XP3FileInfo, XP3File, \
-    XP3FileEntry, XP3Signature, encryption_parameters
+    XP3FileEntry, XP3Signature, game_list
 from encrypt.encrypt_interface import EncryptInterface
 
 
 class XP3Writer:
-    def __init__(self, buffer: BytesIO = None, silent: bool = False, use_numpy: bool = True):
+    encrypt_instance: EncryptInterface
+    game_name: str
+
+    def __init__(self, 
+                 buffer: BytesIO = None, 
+                 silent: bool = False, 
+                 use_numpy: bool = True, 
+                 game_name: str = 'none',
+                 encrypt_instance: EncryptInterface = None):
         """
         :param buffer: Buffer object to write data to
         :param silent: Supress prints
         :param use_numpy: Use Numpy for XORing if available
         """
+        self.encrypt_instance = encrypt_instance
+        self.game_name = game_name
         if not buffer:
             buffer = BytesIO()
         self.buffer = buffer
@@ -34,7 +44,7 @@ class XP3Writer:
             self.pack_up()
         self.buffer.close()
 
-    def add(self, internal_filepath: str, file: bytes, encryption_type: str = None, timestamp: int = 0):
+    def add(self, internal_filepath: str, file: bytes, timestamp: int = 0):
         """
         Add a file to the archive
         :param internal_filepath: Internal file path
@@ -52,7 +62,6 @@ class XP3Writer:
             internal_filepath=internal_filepath,
             uncompressed_data=file,
             offset=self.buffer.tell(),
-            encryption_type=encryption_type,
             timestamp=timestamp)
         self.file_entries.append(file_entry)
         if not self.silent:
@@ -91,7 +100,6 @@ class XP3Writer:
             internal_filepath, 
             uncompressed_data, 
             offset, 
-            encryption_type: str = None,
             timestamp: int = 0
         ) -> tuple[XP3FileEntry, bytes]:
         """
@@ -103,13 +111,13 @@ class XP3Writer:
         :param timestamp Timestamp (in milliseconds)
         :return XP3FileEntry object and compressed or uncompressed file (to write into buffer)
         """
-
+        encryption_type = self.game_name
         adlr = XP3FileAdler.from_data(uncompressed_data)
 
         is_encrypted = False if encryption_type in ('none', None) else True
         if is_encrypted:
-            uncompressed_data = self.encrypt(uncompressed_data, adlr.value, encryption_type, self.use_numpy)
-            _, _, special_index_chunk_name = encryption_parameters[encryption_type]
+            uncompressed_data = self.encrypt(uncompressed_data, adlr.value, self.use_numpy, self.encrypt_instance)
+            _, _, special_index_chunk_name = game_list[encryption_type]
             if special_index_chunk_name:
                 special_format = XP3IndexSpecialFormat(adlr.value, internal_filepath, special_index_chunk_name)
                 path_hash = hashlib.md5(internal_filepath.lower().encode('utf-16le')).hexdigest()
@@ -150,10 +158,9 @@ class XP3Writer:
         return file_entry, data
 
     @staticmethod
-    def encrypt(data, adler32, encryption_type, use_numpy):
+    def encrypt(data: bytes, adler32: int, use_numpy: bool, encrypt_instance: EncryptInterface):
         with BytesIO() as buffer:
             buffer.write(data)
-            crypt_class, params, _ = encryption_parameters[encryption_type]
-            mCrypt: EncryptInterface = crypt_class(**params)
-            mCrypt.encrypt(buffer, adler32, use_numpy)
+
+            encrypt_instance.encrypt(buffer, adler32, use_numpy)
             return buffer.getvalue()
