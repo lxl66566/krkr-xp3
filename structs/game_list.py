@@ -2,7 +2,7 @@ from typing import Type
 
 from encrypt import NoCrypt, NekoCrypt, EncryptInterface, AkabeiCrypt
 
-encryption_parameters: dict[str: tuple[tuple[Type[EncryptInterface], dict[str, int | bool], bytes]]] = {
+game_list: dict[str: tuple[tuple[Type[EncryptInterface], dict[str, int | bool], bytes]]] = {
     # Master key, secondary key, XOR the first byte, segment name (for packing)
     # 👇 加密算法，加密參數的 dict，遺留的臭大糞 chunk 名
     'none': (NoCrypt, {}, False, b''),
