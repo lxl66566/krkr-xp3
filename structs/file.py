@@ -22,7 +22,7 @@ class XP3File(XP3FileEntry):
 
     def __init__(self, index_entry: XP3FileEntry, buffer, silent, use_numpy):
         super().__init__(
-            encryption=index_entry.encryption,
+            special_format=index_entry.special_format,
             time=index_entry.time,
             adlr=index_entry.adlr,
             segm=index_entry.segm,

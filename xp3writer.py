@@ -86,8 +86,14 @@ class XP3Writer:
         if hasattr(self.buffer, 'getvalue'):
             return self.buffer.getvalue()
 
-    def _create_file_entry(self, internal_filepath, uncompressed_data, offset, encryption_type: str = None,
-                           timestamp: int = 0) -> (XP3FileEntry, bytes):
+    def _create_file_entry(
+            self, 
+            internal_filepath, 
+            uncompressed_data, 
+            offset, 
+            encryption_type: str = None,
+            timestamp: int = 0
+        ) -> tuple[XP3FileEntry, bytes]:
         """
         Create a file entry for a file
         :param internal_filepath: Internal file path
@@ -103,11 +109,14 @@ class XP3Writer:
         is_encrypted = False if encryption_type in ('none', None) else True
         if is_encrypted:
             uncompressed_data = self.encrypt(uncompressed_data, adlr.value, encryption_type, self.use_numpy)
-            _, _, name = encryption_parameters[encryption_type]
-            encryption = XP3IndexSpecialFormat(adlr.value, internal_filepath, name)
-            path_hash = hashlib.md5(internal_filepath.lower().encode('utf-16le')).hexdigest()
+            _, _, special_index_chunk_name = encryption_parameters[encryption_type]
+            if special_index_chunk_name:
+                special_format = XP3IndexSpecialFormat(adlr.value, internal_filepath, special_index_chunk_name)
+                path_hash = hashlib.md5(internal_filepath.lower().encode('utf-16le')).hexdigest()
+            else:
+                special_format = path_hash = None
         else:
-            encryption = path_hash = None
+            special_format = path_hash = None
 
         uncompressed_size = len(uncompressed_data)
         compressed_data = uncompressed_data #zlib.compress(uncompressed_data, level=9)
@@ -125,7 +134,7 @@ class XP3Writer:
         info = XP3FileInfo(is_encrypted=is_encrypted,
                            uncompressed_size=uncompressed_size,
                            compressed_size=compressed_size,
-                           file_path=internal_filepath # if not is_encrypted else path_hash  ## modified for me, fuck
+                           file_path=internal_filepath if not path_hash else path_hash  ## modified for me, fuck
                            )
 
         segment = XP3FileSegments.segment(
@@ -136,7 +145,7 @@ class XP3Writer:
         )
         segm = XP3FileSegments([segment])
 
-        file_entry = XP3FileEntry(encryption=encryption, time=time, adlr=adlr, segm=segm, info=info)
+        file_entry = XP3FileEntry(special_format=special_format, time=time, adlr=adlr, segm=segm, info=info)
 
         return file_entry, data
 

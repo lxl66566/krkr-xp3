@@ -168,37 +168,37 @@ class XP3FileAdler:
 
 class XP3FileEntry:
     file_chunk = struct.Struct('<Q')
-    encryption: XP3IndexSpecialFormat
+    special_format: XP3IndexSpecialFormat
     time: XP3FileTime
     adlr: XP3FileAdler
     segm: XP3FileSegments
     info: XP3FileInfo
 
     def __init__(self, time: XP3FileTime, adlr: XP3FileAdler, segm: XP3FileSegments, info: XP3FileInfo,
-                 encryption: XP3IndexSpecialFormat = None):
-        self.encryption = encryption
+                 special_format: XP3IndexSpecialFormat = None):
+        self.special_format = special_format
         self.time = time
         self.adlr = adlr
         self.segm = segm
         self.info = info
 
-        if encryption:
-            if adlr.value != encryption.adler32:
-                raise AssertionError('Checksum values in adlr chunk and encryption chunk do not match')
+        if special_format:
+            if adlr.value != special_format.adler32:
+                raise AssertionError('Checksum values in adlr chunk and special_format chunk do not match')
 
     @classmethod
     def read_from(cls, buffer: BufferedReader):
-        encryption = None
+        special_format = None
         time = None
         adlr = None
         segm = None
         info = None
 
         name = buffer.read(4)
-        if name != b'File':  # first chunk should be 'File', if not most likely an encryption chunk
-            encryption = XP3IndexSpecialFormat.read_from(buffer, name)
+        if name != b'File':  # first chunk should be 'File', if not most likely an special_format chunk
+            special_format = XP3IndexSpecialFormat.read_from(buffer, name)
             if buffer.read(4) != b'File':
-                raise AssertionError
+                raise AssertionError("Expected 'File' chunk after maker specific chunk in index file entry")
         start = buffer.tell()
         size, = cls.file_chunk.unpack(buffer.read(8))
         end = start + size
@@ -218,7 +218,7 @@ class XP3FileEntry:
         elif not time:  # time chunk is not always present
             time = XP3FileTime()  # create an empty placeholder
 
-        return cls(adlr=adlr, segm=segm, info=info, time=time, encryption=encryption)
+        return cls(adlr=adlr, segm=segm, info=info, time=time, special_format=special_format)
 
     @property
     def adler32(self):
@@ -230,8 +230,8 @@ class XP3FileEntry:
 
     @property
     def file_path(self):
-        if self.is_encrypted and self.encryption:
-            return self.encryption.file_path
+        if self.is_encrypted and self.special_format:
+            return self.special_format.file_path
         else:
             return self.info.file_path
 
@@ -241,9 +241,10 @@ class XP3FileEntry:
             + self.segm.to_bytes() \
             + self.info.to_bytes()
         header = struct.pack('<4sQ', b'File', len(entry))
-        encryption = b'' #self.encryption.to_bytes() if self.is_encrypted else b''  ## modified for me, fuck
+        special_format = self.special_format.to_bytes() if self.special_format is not None else b''  
+        ## modified for me, fuck
 
-        return encryption + header + entry
+        return special_format + header + entry
 
     def __repr__(self):
         return "<XP3FileEntry file_path='{}', size={}, encrypted={}, timestamp={}>"\
