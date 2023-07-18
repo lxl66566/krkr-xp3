@@ -65,9 +65,7 @@ class XP3Writer:
             timestamp=timestamp)
         self.file_entries.append(file_entry)
         if not self.silent:
-            print('| Packing {} ({} -> {} bytes)'.format(internal_filepath,
-                                                         file_entry.segm.uncompressed_size,
-                                                         file_entry.segm.compressed_size))
+            print(f'| Packing {internal_filepath} ({file_entry.segm.uncompressed_size} -> {file_entry.segm.compressed_size} bytes)')
         self.buffer.write(file)
 
     def pack_up(self) -> bytes:
