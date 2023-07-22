@@ -125,7 +125,7 @@ class XP3Writer:
             special_format = path_hash = None
 
         uncompressed_size = len(uncompressed_data)
-        compressed_data = uncompressed_data #zlib.compress(uncompressed_data, level=9)
+        compressed_data = zlib.compress(uncompressed_data, level=9)
         compressed_size = len(compressed_data)
 
         if compressed_size >= uncompressed_size:
