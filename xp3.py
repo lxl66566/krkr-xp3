@@ -24,7 +24,7 @@ encrypt_instance: EncryptInterface = None
 game_name: str = 'none'
 
 class XP3(XP3Reader, XP3Writer):
-    def __init__(self, target, mode='r', silent=False):
+    def __init__(self, target, mode='r', silent=False, compressed=True):
         self.mode = mode
 
         if self._is_readmode:
@@ -39,7 +39,7 @@ class XP3(XP3Reader, XP3Writer):
                 if dir and not os.path.exists(dir):
                     os.makedirs(dir)
                 target = open(target, 'wb')
-            XP3Writer.__init__(self, target, silent, True, game_name, encrypt_instance)
+            XP3Writer.__init__(self, target, silent, True, game_name, encrypt_instance, compressed)
         else:
             raise ValueError('Invalid operation mode')
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--dump-index', '-i', action='store_true', help='Dump the file index of an archive')
     parser.add_argument('-encryption', '-e', choices=game_list.keys(), default='none',
                         help='Specify the encryption method')
-    parser.add_argument('--compression', '-c', action='store_true', default=False)
+    parser.add_argument('-compress', '-c', action='store_true', default=False)
     parser.add_argument('input', type=input_filepath, help='File to unpack or folder to pack')
     parser.add_argument('output', help='Output folder to unpack into or output file to pack into')
     args = parser.parse_args()
@@ -146,5 +146,5 @@ if __name__ == '__main__':
             else:
                 xp3.extract(args.output, args.encryption)
     elif args.mode in ('r', 'repack'):
-        with XP3(args.output, 'w', args.silent) as xp3:
+        with XP3(args.output, 'w', args.silent, args.compress) as xp3:
             xp3.add_folder(args.input, args.flatten, args.encryption)

@@ -2,7 +2,8 @@ import zlib
 import struct
 import hashlib
 from io import BytesIO
-from structs import XP3FileIndex, XP3IndexSpecialFormat, XP3FileTime, XP3FileAdler, XP3FileSegments, XP3FileInfo, XP3File, \
+from structs import XP3FileIndex, XP3IndexSpecialFormat, XP3FileTime, XP3FileAdler, XP3FileSegments, XP3FileInfo, \
+    XP3File, \
     XP3FileEntry, XP3Signature, game_list
 from encrypt.encrypt_interface import EncryptInterface
 
@@ -10,13 +11,16 @@ from encrypt.encrypt_interface import EncryptInterface
 class XP3Writer:
     encrypt_instance: EncryptInterface
     game_name: str
+    compressed: bool
 
-    def __init__(self, 
-                 buffer: BytesIO = None, 
-                 silent: bool = False, 
-                 use_numpy: bool = True, 
+    def __init__(self,
+                 buffer: BytesIO = None,
+                 silent: bool = False,
+                 use_numpy: bool = True,
                  game_name: str = 'none',
-                 encrypt_instance: EncryptInterface = None):
+                 encrypt_instance: EncryptInterface = None,
+                 compressed=False
+                 ):
         """
         :param buffer: Buffer object to write data to
         :param silent: Supress prints
@@ -24,6 +28,7 @@ class XP3Writer:
         """
         self.encrypt_instance = encrypt_instance
         self.game_name = game_name
+        self.compressed = compressed
         if not buffer:
             buffer = BytesIO()
         self.buffer = buffer
@@ -65,7 +70,8 @@ class XP3Writer:
             timestamp=timestamp)
         self.file_entries.append(file_entry)
         if not self.silent:
-            print(f'| Packing {internal_filepath} ({file_entry.segm.uncompressed_size} -> {file_entry.segm.compressed_size} bytes)')
+            print(
+                f'| Packing {internal_filepath} ({file_entry.segm.uncompressed_size} -> {file_entry.segm.compressed_size} bytes)')
         self.buffer.write(file)
 
     def pack_up(self) -> bytes:
@@ -78,7 +84,7 @@ class XP3Writer:
                 return self.buffer.getvalue()
 
         # Write the file index
-        file_index = XP3FileIndex.from_entries(self.file_entries).to_bytes()
+        file_index = XP3FileIndex.from_entries(self.file_entries).to_bytes(self.compressed)
         file_index_offset = self.buffer.tell()
         self.buffer.write(file_index)
 
@@ -94,12 +100,12 @@ class XP3Writer:
             return self.buffer.getvalue()
 
     def _create_file_entry(
-            self, 
-            internal_filepath, 
-            uncompressed_data, 
-            offset, 
+            self,
+            internal_filepath,
+            uncompressed_data,
+            offset,
             timestamp: int = 0
-        ) -> tuple[XP3FileEntry, bytes]:
+    ) -> tuple[XP3FileEntry, bytes]:
         """
         Create a file entry for a file
         :param internal_filepath: Internal file path
@@ -125,7 +131,7 @@ class XP3Writer:
             special_format = path_hash = None
 
         uncompressed_size = len(uncompressed_data)
-        compressed_data = zlib.compress(uncompressed_data, level=9)
+        compressed_data = zlib.compress(uncompressed_data, level=9) if self.compressed else uncompressed_data
         compressed_size = len(compressed_data)
 
         if compressed_size >= uncompressed_size:
